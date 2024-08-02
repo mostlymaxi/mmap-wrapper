@@ -1,7 +1,17 @@
 [package]
 name = "mmap-wrapper"
-version = "0.1.0"
+version = "0.9.9"
 edition = "2021"
+authors = ["Maxi Saparov <maxi.saparov@gmail.com>"]
+description = "a simple wrapper for the memmap2 crate to cast mmap backed pointers to structs"
+documentation = "https://docs.rs/mmap-wrapper"
+homepage = "https://github.com/mostlymaxi/mmap-wrapper"
+repository = "https://github.com/mostlymaxi/mmap-wrapper"
+readme = "README.md"
+keywords = ["memmap2", "mmap", "utility"]
+license = "MIT"
+categories = ["memory-management", "data-structures", "filesystem"]
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 memmap2 = "0.9.4"
