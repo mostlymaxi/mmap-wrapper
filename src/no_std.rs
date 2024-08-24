@@ -34,8 +34,8 @@ extern "C" {
 }
 
 /// # MmapWrapper
-/// a common use case for mmaps in C is to cast the mmap backed pointer
-/// to a struct such as:
+///
+/// A common use case for `mmap` in C is to cast the mmap backed region to a struct:
 /// ```c
 /// MyStruct* mmap_backed_mystruct;
 /// int fd;
@@ -46,12 +46,12 @@ extern "C" {
 /// mmap_backed_mystruct = (MyStruct*)mmap(0, sizeof(MyStruct), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 /// ```
 ///
-/// this is a helpful wrapper for this use case:
+/// This is a helpful wrapper for the same usecase:
 /// ```rust
 /// use mmap_wrapper::MmapWrapper;
 ///
-/// // structs musthave a well defined layout,
-/// // generally want them to be transparent or repr(C)
+/// // Your struct MUST have a consistent memory layout.
+/// // Use either #[repr(transparent)] or #[repr(C)].
 /// #[repr(C)]
 /// struct MyStruct {
 ///    thing1: i32,
@@ -69,14 +69,15 @@ pub struct MmapWrapper<T> {
 }
 
 /// # MmapMutWrapper
-/// this is identical to [`MmapWrapper`] but returns a mutable reference instead.
 ///
-/// this is a helpful wrapper for this use case:
+/// This is identical to [`MmapWrapper`] but returns a mutable reference instead.
+///
+/// A common use case for `mmap` in C is to cast the mmap backed region to a struct:
 /// ```rust
 /// use mmap_wrapper::MmapMutWrapper;
 ///
-/// // structs musthave a well defined layout,
-/// // generally want them to be transparent or repr(C)
+/// // Your struct MUST have a consistent memory layout.
+/// // Use either #[repr(transparent)] or #[repr(C)].
 /// #[repr(C)]
 /// struct MyStruct {
 ///    thing1: i32,
@@ -100,9 +101,7 @@ impl<T> MmapWrapper<T> {
     ///
     /// # Safety
     ///
-    /// - The `T` type must be a `#[repr(C)]` struct to ensure correct memory layout.
-    /// - The caller must ensure that the size of `T` is appropriate for the intended use of the mapped region.
-    /// - The function opens the file with read/write permissions and creates it if it does not exist. The file's permissions are set to `0o644`.
+    /// - The `T` type must be `#[repr(C)]` or `#[repr(transparent)]` to ensure a consistent memory layout.
     /// - The file is truncated to the size of `T`. If this fails, the file descriptor is closed, and an error is returned.
     /// - Memory mapping is done with either (`PROT_READ | PROT_WRITE` or `PROT_READ`) and `MAP_SHARED`. If the mapping fails, the file descriptor is closed, and an error is returned.
     ///
@@ -164,10 +163,8 @@ impl<T> MmapWrapper<T> {
     ///
     /// # Safety
     ///
-    /// - The `self.raw` pointer must be a valid, properly aligned pointer to a memory-mapped region that contains a valid instance of `T`.
-    /// - The memory mapped must be valid and correctly represent an instance of `T`, which should typically have `#[repr(C)]` to ensure a consistent layout.
-    /// - The caller must ensure that `self.raw` points to valid memory and that the memory region has not been modified or invalidated elsewhere.
-    /// - The function assumes that the memory pointed to by `self.raw` is initialized and correctly aligned for `T`.
+    /// - The function assumes that `self.raw` is a valid region aligned to `size_of::<T>()`.
+    /// - The caller must ensure that `T` has a consistent layout by using `#[repr(transparent)]` or `#[repr(C)]`.
     ///
     /// # Panics
     ///
@@ -189,10 +186,8 @@ impl<T> MmapMutWrapper<T> {
     ///
     /// # Safety
     ///
-    /// - The `self.raw` pointer must be a valid, properly aligned pointer to a memory-mapped region that contains a valid instance of `T`.
-    /// - The memory mapped must be valid and correctly represent an instance of `T`, which should typically have `#[repr(C)]` to ensure a consistent layout.
-    /// - The caller must ensure that `self.raw` points to valid memory and that the memory region has not been modified or invalidated elsewhere.
-    /// - The function assumes that the memory pointed to by `self.raw` is initialized and correctly aligned for `T`.
+    /// - The function assumes that `self.raw` is a valid region aligned to `size_of::<T>()`.
+    /// - The caller must ensure that `T` has a consistent layout by using `#[repr(transparent)]` or `#[repr(C)]`.
     ///
     /// # Panics
     ///
