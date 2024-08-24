@@ -54,7 +54,7 @@ pub struct MmapWrapper<T> {
 /// this is identical to [`MmapWrapper`] but returns a mutable reference instead.
 ///
 /// this is a helpful wrapper for this use case:
-/// ```rust
+/// ```rust no_run
 ///  use mmap_wrapper::MmapMutWrapper;
 ///
 ///  // structs musthave a well defined layout,
