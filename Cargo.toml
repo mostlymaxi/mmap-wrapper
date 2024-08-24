@@ -14,8 +14,8 @@ categories = ["memory-management", "data-structures", "filesystem"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["no_std"]
-# default = ["dep:memmap2"]
+# default = ["no_std"]
+default = ["dep:memmap2"]
 no_std = []
 
 [dependencies]
