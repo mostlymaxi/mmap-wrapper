@@ -48,20 +48,20 @@ extern "C" {
 ///
 /// this is a helpful wrapper for this use case:
 /// ```rust
-///  use mmap_wrapper::MmapWrapper;
+/// use mmap_wrapper::MmapWrapper;
 ///
-///  // structs musthave a well defined layout,
-///  // generally want them to be transparent or repr(C)
-///  #[repr(C)]
-///  struct MyStruct {
-///     thing1: i32,
-///     thing2: f64,
-///  }
+/// // structs musthave a well defined layout,
+/// // generally want them to be transparent or repr(C)
+/// #[repr(C)]
+/// struct MyStruct {
+///    thing1: i32,
+///    thing2: f64,
+/// }
 ///
-///  let m_wrapper = MmapWrapper::<MyStruct>::new(c"/tmp/mystruct-mmap-test.bin", /* write */ true, /* truncate */ true).unwrap();
-///  let mmap_backed_mystruct = unsafe {
-///     m_wrapper.get_inner()
-///  };
+/// let m_wrapper = MmapWrapper::<MyStruct>::new(c"/tmp/mystruct-mmap-test.bin").unwrap();
+/// let mmap_backed_mystruct = unsafe {
+///    m_wrapper.get_inner()
+/// };
 /// ```
 pub struct MmapWrapper<T> {
     raw: *mut c_void,
@@ -73,55 +73,25 @@ pub struct MmapWrapper<T> {
 ///
 /// this is a helpful wrapper for this use case:
 /// ```rust
-///  use mmap_wrapper::MmapMutWrapper;
+/// use mmap_wrapper::MmapMutWrapper;
 ///
-///  // structs musthave a well defined layout,
-///  // generally want them to be transparent or repr(C)
-///  #[repr(C)]
-///  struct MyStruct {
-///     thing1: i32,
-///     thing2: f64,
-///  }
-///
-///  let mut m_wrapper = MmapMutWrapper::<MyStruct>::new(c"/tmp/mystruct-mmap-test.bin", /* write */ true, /* truncate */ true).unwrap();
-///  let mmap_backed_mystruct = unsafe {
-///     m_wrapper.get_inner()
-///  };
-///
-///  mmap_backed_mystruct.thing1 = 123;
-/// ```
-pub struct MmapMutWrapper<T> {
-    raw: *mut c_void,
-    _inner: PhantomData<T>,
-}
-
-/// A builder for creating [`MmapWrapper`] or [`MmapMutWrapper`].
-///
-/// # Example
-///
-/// ```rust
-/// use std::ffi::CStr;
-/// use mmap_wrapper::MmapWrapperBuilder;
-///
+/// // structs musthave a well defined layout,
+/// // generally want them to be transparent or repr(C)
 /// #[repr(C)]
 /// struct MyStruct {
 ///    thing1: i32,
 ///    thing2: f64,
 /// }
 ///
-/// let m_wrapper = MmapWrapperBuilder::<MyStruct>::new(c"/tmp/mmap-mystruct-test.bin")
-///     .write(true)
-///     .truncate(false)
-///     .build_mut()
-///     .unwrap();
-/// let mmap_backed_mystruct: &mut MyStruct = unsafe {
-///     m_wrapper.get_inner()
+/// let mut m_wrapper = MmapMutWrapper::<MyStruct>::new(c"/tmp/mystruct-mmap-test.bin").unwrap();
+/// let mmap_backed_mystruct = unsafe {
+///    m_wrapper.get_inner()
 /// };
+///
+/// mmap_backed_mystruct.thing1 = 123;
 /// ```
-pub struct MmapWrapperBuilder<'a, T> {
-    path: &'a CStr,
-    write: bool,
-    truncate: bool,
+pub struct MmapMutWrapper<T> {
+    raw: *mut c_void,
     _inner: PhantomData<T>,
 }
 
@@ -130,19 +100,17 @@ impl<T> MmapWrapper<T> {
     ///
     /// # Safety
     ///
-    /// - The `path` argument must be a valid, null-terminated C string representing the file path.
     /// - The `T` type must be a `#[repr(C)]` struct to ensure correct memory layout.
     /// - The caller must ensure that the size of `T` is appropriate for the intended use of the mapped region.
     /// - The function opens the file with read/write permissions and creates it if it does not exist. The file's permissions are set to `0o644`.
     /// - The file is truncated to the size of `T`. If this fails, the file descriptor is closed, and an error is returned.
-    /// - Memory mapping is done with `PROT_READ | PROT_WRITE` and `MAP_SHARED`. If the mapping fails, the file descriptor is closed, and an error is returned.
-    /// - The caller is responsible for unmapping the memory region using `munmap` and closing the file descriptor with `close` when done.
+    /// - Memory mapping is done with either (`PROT_READ | PROT_WRITE` or `PROT_READ`) and `MAP_SHARED`. If the mapping fails, the file descriptor is closed, and an error is returned.
     ///
     /// # Errors
     ///
     /// - Returns `Err` if the file cannot be opened, truncated, or mapped.
     /// - Returns `Err(-1)` specifically if memory mapping fails.
-    fn map(path: &CStr, write: bool, truncate: bool) -> Result<*mut c_void, c_int> {
+    fn map(path: &CStr, write: bool) -> Result<*mut c_void, c_int> {
         let fd = unsafe {
             let flag = if write { O_RDWR } else { O_RDONLY };
             open(path.as_ptr(), O_CREAT | flag, 0o644)
@@ -151,7 +119,7 @@ impl<T> MmapWrapper<T> {
             return Err(fd);
         }
 
-        if truncate {
+        if write {
             let res = unsafe { ftruncate(fd, size_of::<T>() as c_longlong) };
             if res < 0 {
                 unsafe { close(fd) };
@@ -180,12 +148,14 @@ impl<T> MmapWrapper<T> {
             return Err(-1);
         }
 
+        unsafe { close(fd) };
+
         Ok(mapped_region)
     }
 
-    pub fn new(path: &CStr, write: bool, truncate: bool) -> Result<MmapWrapper<T>, c_int> {
+    pub fn new(path: &CStr) -> Result<MmapWrapper<T>, c_int> {
         Ok(MmapWrapper {
-            raw: Self::map(path, write, truncate)?,
+            raw: Self::map(path, false)?,
             _inner: PhantomData,
         })
     }
@@ -216,9 +186,9 @@ impl<T> MmapWrapper<T> {
 }
 
 impl<T> MmapMutWrapper<T> {
-    pub fn new(path: &CStr, write: bool, truncate: bool) -> Result<MmapMutWrapper<T>, c_int> {
+    pub fn new(path: &CStr) -> Result<MmapMutWrapper<T>, c_int> {
         Ok(MmapMutWrapper {
-            raw: MmapWrapper::<T>::map(path, write, truncate)?,
+            raw: MmapWrapper::<T>::map(path, true)?,
             _inner: PhantomData,
         })
     }
@@ -240,35 +210,6 @@ impl<T> MmapMutWrapper<T> {
     }
 }
 
-impl<'a, T> MmapWrapperBuilder<'a, T> {
-    pub fn new(path: &'a CStr) -> MmapWrapperBuilder<T> {
-        Self {
-            path,
-            write: false,
-            truncate: false,
-            _inner: PhantomData,
-        }
-    }
-
-    pub fn write(mut self, value: bool) -> MmapWrapperBuilder<'a, T> {
-        self.write = value;
-        self
-    }
-
-    pub fn truncate(mut self, value: bool) -> MmapWrapperBuilder<'a, T> {
-        self.truncate = value;
-        self
-    }
-
-    pub fn build(self) -> Result<MmapWrapper<T>, c_int> {
-        MmapWrapper::new(&self.path, self.write, self.truncate)
-    }
-
-    pub fn build_mut(self) -> Result<MmapMutWrapper<T>, c_int> {
-        MmapMutWrapper::new(&self.path, self.write, self.truncate)
-    }
-}
-
 impl<T> Drop for MmapWrapper<T> {
     fn drop(&mut self) {
         unsafe {
@@ -286,5 +227,43 @@ impl<T> Drop for MmapMutWrapper<T> {
                 munmap(self.raw, size_of::<T>());
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use core::ffi::CStr;
+
+    use crate::{MmapMutWrapper, MmapWrapper};
+
+    #[repr(C)]
+    struct MyStruct {
+        thing1: i32,
+        thing2: f64,
+    }
+
+    #[test]
+    fn basic_rw() {
+        const PATH: &CStr = c"/tmp/mmap-wrapper-test";
+
+        let rw_wrapper = MmapMutWrapper::<MyStruct>::new(PATH).unwrap();
+
+        let mut_inner = unsafe { rw_wrapper.get_inner() };
+        mut_inner.thing1 = i32::MAX;
+        mut_inner.thing2 = f64::MIN;
+
+        let ro_wrapper = MmapWrapper::<MyStruct>::new(PATH).unwrap();
+        let inner = unsafe { ro_wrapper.get_inner() };
+
+        assert_eq!(inner.thing1, i32::MAX);
+        assert_eq!(inner.thing2, f64::MIN);
+
+        drop(ro_wrapper);
+
+        mut_inner.thing1 = i32::MIN;
+        mut_inner.thing2 = f64::MAX;
+
+        assert_eq!(mut_inner.thing1, i32::MIN);
+        assert_eq!(mut_inner.thing2, f64::MAX);
     }
 }
