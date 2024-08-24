@@ -160,14 +160,6 @@ impl<T> MmapWrapper<T> {
         })
     }
 
-    // The std version uses std::io::Error for the error type so this isn't 1:1, can't do anything about it.
-    pub fn make_mut(self) -> MmapMutWrapper<T> {
-        MmapMutWrapper {
-            raw: self.raw,
-            _inner: PhantomData,
-        }
-    }
-
     /// Retrieves a reference to the inner value of type `T` from the mapped memory.
     ///
     /// # Safety
