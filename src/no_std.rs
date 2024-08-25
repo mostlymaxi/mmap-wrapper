@@ -165,7 +165,7 @@ impl<T> MmapWrapper<T> {
     ///
     /// This function is `unsafe` and does not perform any checks, so it may lead to undefined behavior if the safety guarantees are not met.
     pub unsafe fn get_inner<'a>(&self) -> &'a T {
-        &*self.raw.cast::<T>()
+        unsafe { &*self.raw.cast::<T>() }
     }
 }
 
@@ -188,14 +188,14 @@ impl<T> MmapMutWrapper<T> {
     ///
     /// This function is `unsafe` and does not perform any checks, so it may lead to undefined behavior if the safety guarantees are not met.
     pub unsafe fn get_inner<'a>(&self) -> &'a mut T {
-        &mut *self.raw.cast::<T>()
+        unsafe { &mut *self.raw.cast::<T>() }
     }
 }
 
 impl<T> Drop for MmapWrapper<T> {
     fn drop(&mut self) {
-        unsafe {
-            if self.raw != ptr::null_mut() {
+        if !self.raw.is_null() {
+            unsafe {
                 munmap(self.raw, size_of::<T>());
             }
         }
@@ -204,8 +204,8 @@ impl<T> Drop for MmapWrapper<T> {
 
 impl<T> Drop for MmapMutWrapper<T> {
     fn drop(&mut self) {
-        unsafe {
-            if self.raw != ptr::null_mut() {
+        if !self.raw.is_null() {
+            unsafe {
                 munmap(self.raw, size_of::<T>());
             }
         }
