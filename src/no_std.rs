@@ -33,25 +33,19 @@ extern "C" {
     fn munmap(addr: *mut c_void, length: off_t) -> c_int;
 }
 
-/// # MmapWrapper
+/// A wrapper for a memory-mapped file with data of type `T`.
 ///
-/// A common use case for `mmap` in C is to cast the mmap backed region to a struct:
-/// ```c
-/// MyStruct* mmap_backed_mystruct;
-/// int fd;
+/// # Safety
 ///
-/// fd = open(path, O_RDWR | O_CREAT, 0644);
-/// ftruncate(fd, sizeof(MyStruct));
+/// `T` must have a consistent memory layout to ensure that the data is casted correctly.
 ///
-/// mmap_backed_mystruct = (MyStruct*)mmap(0, sizeof(MyStruct), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-/// ```
+/// Use `#[repr(transparent)]` if `T` is a newtype wrapper around a single field otherwise `#[repr(C)]`.
 ///
-/// This is a helpful wrapper for the same usecase:
+/// # Example
 /// ```rust
 /// use mmap_wrapper::MmapWrapper;
 ///
-/// // Your struct MUST have a consistent memory layout.
-/// // Use either #[repr(transparent)] or #[repr(C)].
+/// // repr(C) for consistent memory layout
 /// #[repr(C)]
 /// struct MyStruct {
 ///    thing1: i32,
@@ -68,28 +62,29 @@ pub struct MmapWrapper<T> {
     _inner: PhantomData<T>,
 }
 
-/// # MmapMutWrapper
+/// A mutable wrapper for a memory-mapped file with data of type `T`.
 ///
-/// This is identical to [`MmapWrapper`] but returns a mutable reference instead.
+/// # Safety
 ///
-/// A common use case for `mmap` in C is to cast the mmap backed region to a struct:
+/// `T` must have a consistent memory layout to ensure that the data is casted correctly.
+///
+/// Use `#[repr(transparent)]` if `T` is a newtype wrapper around a single field otherwise `#[repr(C)]`.
+///
+/// # Example
 /// ```rust
-/// use mmap_wrapper::MmapMutWrapper;
+/// use mmap_wrapper::MmapWrapper;
 ///
-/// // Your struct MUST have a consistent memory layout.
-/// // Use either #[repr(transparent)] or #[repr(C)].
+/// // repr(C) for consistent memory layout
 /// #[repr(C)]
 /// struct MyStruct {
 ///    thing1: i32,
 ///    thing2: f64,
 /// }
 ///
-/// let mut m_wrapper = MmapMutWrapper::<MyStruct>::new(c"/tmp/mystruct-mmap-test.bin").unwrap();
+/// let m_wrapper = MmapWrapper::<MyStruct>::new(c"/tmp/mystruct-mmap-test.bin").unwrap();
 /// let mmap_backed_mystruct = unsafe {
 ///    m_wrapper.get_inner()
 /// };
-///
-/// mmap_backed_mystruct.thing1 = 123;
 /// ```
 pub struct MmapMutWrapper<T> {
     raw: *mut c_void,

@@ -11,11 +11,10 @@ ftruncate(fd, sizeof(MyStruct));
 mmap_backed_mystruct = (MyStruct*)mmap(0, sizeof(MyStruct), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 ```
 
-
 # Example
 
 This is a helpful wrapper for the same usecase:
-```rust
+```rust ignore
 use mmap_wrapper::MmapWrapper;
 
 // Your struct MUST have a consistent memory layout.

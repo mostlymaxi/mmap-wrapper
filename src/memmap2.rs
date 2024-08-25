@@ -1,90 +1,84 @@
 use memmap2::{Mmap, MmapMut};
 use std::marker::PhantomData;
 
-/// # MmapWrapper
-/// a common use case for mmaps in C is to cast the mmap backed pointer
-/// to a struct such as:
-/// ```c
-/// MyStruct* mmap_backed_mystruct;
-/// int fd;
+/// A wrapper wrapper for a memory-mapped file with data of type `T`.
 ///
-/// fd = open(path, O_RDWR | O_CREAT, 0644);
-/// ftruncate(fd, sizeof(MyStruct));
+/// # Safety
 ///
-/// mmap_backed_mystruct = (MyStruct*)mmap(0, sizeof(MyStruct), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-/// ```
+/// `T` must have a consistent memory layout to ensure that the data is casted correctly.
 ///
-/// this is a helpful wrapper for this use case:
+/// Use `#[repr(transparent)]` if `T` is a newtype wrapper around a single field otherwise `#[repr(C)]`.
+///
+/// # Example
 /// ```rust
-///  use mmap_wrapper::MmapWrapper;
+/// use mmap_wrapper::MmapWrapper;
 ///
-///  // structs musthave a well defined layout,
-///  // generally want them to be transparent or repr(C)
-///  #[repr(C)]
-///  struct MyStruct {
-///     thing1: i32,
-///     thing2: f64,
-///  }
+/// #[repr(C)]
+/// struct MyStruct {
+///    thing1: i32,
+///    thing2: f64,
+/// }
 ///
-///  let f = std::fs::File::options()
-///      .read(true)
-///      .write(true)
-///      .create(true)
-///      .truncate(false)
-///      .open("/tmp/mystruct-mmap-test.bin")
-///      .unwrap();
+/// let f = std::fs::File::options()
+///     .read(true)
+///     .write(true)
+///     .create(true)
+///     .truncate(false)
+///     .open("/tmp/mystruct-mmap-test.bin")
+///     .unwrap();
 ///
-///  let _ = f.set_len(std::mem::size_of::<MyStruct>() as u64);
+/// let _ = f.set_len(std::mem::size_of::<MyStruct>() as u64);
 ///
-///  let m = unsafe {
-///      memmap2::Mmap::map(&f).unwrap()
-///  };
+/// let m = unsafe {
+///     memmap2::Mmap::map(&f).unwrap()
+/// };
 ///
-///  let m_wrapper = MmapWrapper::<MyStruct>::new(m);
-///  let mmap_backed_mystruct = unsafe {
-///     m_wrapper.get_inner()
-///  };
+/// let m_wrapper = MmapWrapper::<MyStruct>::new(m);
+/// let mmap_backed_mystruct = unsafe {
+///    m_wrapper.get_inner()
+/// };
 /// ```
 pub struct MmapWrapper<T> {
     raw: Mmap,
     _inner: PhantomData<T>,
 }
 
-/// # MmapMutWrapper
-/// this is identical to [`MmapWrapper`] but returns a mutable reference instead.
+/// A mutable wrapper wrapper for a memory-mapped file with data of type `T`.
 ///
-/// this is a helpful wrapper for this use case:
-/// ```rust no_run
-///  use mmap_wrapper::MmapMutWrapper;
+/// # Safety
 ///
-///  // structs musthave a well defined layout,
-///  // generally want them to be transparent or repr(C)
-///  #[repr(C)]
-///  struct MyStruct {
-///     thing1: i32,
-///     thing2: f64,
-///  }
+/// `T` must have a consistent memory layout to ensure that the data is casted correctly.
 ///
-///  let f = std::fs::File::options()
-///      .read(true)
-///      .write(true)
-///      .create(true)
-///      .truncate(false)
-///      .open("/tmp/mystruct-mmap-test.bin")
-///      .unwrap();
+/// Use `#[repr(transparent)]` if `T` is a newtype wrapper around a single field otherwise `#[repr(C)]`.
 ///
-///  let _ = f.set_len(std::mem::size_of::<MyStruct>() as u64);
+/// # Example
+/// ```rust
+/// use mmap_wrapper::MmapWrapper;
 ///
-///  let m = unsafe {
-///      memmap2::MmapMut::map_mut(&f).unwrap()
-///  };
+/// #[repr(C)]
+/// struct MyStruct {
+///    thing1: i32,
+///    thing2: f64,
+/// }
 ///
-///  let mut m_wrapper = MmapMutWrapper::<MyStruct>::new(m);
-///  let mmap_backed_mystruct = unsafe {
-///     m_wrapper.get_inner()
-///  };
+/// let f = std::fs::File::options()
+///     .read(true)
+///     .write(true)
+///     .create(true)
+///     .truncate(false)
+///     .open("/tmp/mystruct-mmap-test.bin")
+///     .unwrap();
 ///
-///  mmap_backed_mystruct.thing1 = 123;
+/// let _ = f.set_len(std::mem::size_of::<MyStruct>() as u64);
+///
+/// let m = unsafe {
+///     memmap2::Mmap::map(&f).unwrap()
+/// };
+///
+/// let m_wrapper = MmapWrapper::<MyStruct>::new(m);
+/// let mmap_backed_mystruct = unsafe {
+///    m_wrapper.get_inner()
+/// };
 /// ```
 pub struct MmapMutWrapper<T> {
     raw: MmapMut,
