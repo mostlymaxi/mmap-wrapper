@@ -1,6 +1,6 @@
 [package]
 name = "mmap-wrapper"
-version = "0.9.9"
+version = "0.9.10"
 edition = "2021"
 authors = ["Maxi Saparov <maxi.saparov@gmail.com>"]
 description = "a simple wrapper for the memmap2 crate to cast mmap backed pointers to structs"
@@ -13,5 +13,13 @@ license = "MIT"
 categories = ["memory-management", "data-structures", "filesystem"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[lints.rust]
+# In edition 2024 this warns by default, might as well adhere to it early c:
+unsafe_op_in_unsafe_fn = "warn"
+
+[features]
+default = ["dep:memmap2"]
+no_std = []
+
 [dependencies]
-memmap2 = "0.9.4"
+memmap2 = { version = "0.9.4", optional = true }
