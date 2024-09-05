@@ -1,6 +1,6 @@
 [package]
 name = "mmap-wrapper"
-version = "0.9.10"
+version = "1.0.1"
 edition = "2021"
 authors = ["Maxi Saparov <maxi.saparov@gmail.com>"]
 description = "a simple wrapper for the memmap2 crate to cast mmap backed pointers to structs"
