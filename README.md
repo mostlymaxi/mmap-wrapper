@@ -39,10 +39,8 @@ let m = unsafe {
     memmap2::Mmap::map(&f).unwrap()
 };
 
-let m_wrapper = MmapWrapper::<MyStruct>::new(m);
-let mmap_backed_mystruct = unsafe {
-   m_wrapper.get_inner()
-};
+let m_wrapper = unsafe { MmapWrapper::<MyStruct>::new(m) };
+let mmap_backed_mystruct = m_wrapper.get_inner();
 ```
 
 # `no_std` Example
@@ -58,8 +56,6 @@ struct MyStruct {
    thing2: f64,
 }
 
-let m_wrapper = MmapWrapper::<MyStruct>::new(c"/tmp/mystruct-mmap-test.bin").unwrap();
-let mmap_backed_mystruct = unsafe {
-   m_wrapper.get_inner()
-};
+let m_wrapper = unsafe { MmapWrapper::<MyStruct>::new(c"/tmp/mystruct-mmap-test.bin").unwrap() };
+let mmap_backed_mystruct = m_wrapper.get_inner();
 ```

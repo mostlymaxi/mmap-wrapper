@@ -170,13 +170,6 @@ impl<T> MmapWrapper<T> {
 }
 
 impl<T> MmapMutWrapper<T> {
-    pub fn new(path: &CStr) -> Result<MmapMutWrapper<T>, c_int> {
-        Ok(MmapMutWrapper {
-            raw: MmapWrapper::<T>::map(path, true)?,
-            _inner: PhantomData,
-        })
-    }
-
     /// Retrieves a mutable reference to the inner value of type `T` from the mapped memory.
     ///
     /// # Safety
@@ -187,7 +180,14 @@ impl<T> MmapMutWrapper<T> {
     /// # Panics
     ///
     /// This function is `unsafe` and does not perform any checks, so it may lead to undefined behavior if the safety guarantees are not met.
-    pub unsafe fn get_inner<'a>(&self) -> &'a mut T {
+    pub unsafe fn new(path: &CStr) -> Result<MmapMutWrapper<T>, c_int> {
+        Ok(MmapMutWrapper {
+            raw: MmapWrapper::<T>::map(path, true)?,
+            _inner: PhantomData,
+        })
+    }
+
+    pub fn get_inner<'a>(&self) -> &'a mut T {
         unsafe { &mut *self.raw.cast::<T>() }
     }
 }

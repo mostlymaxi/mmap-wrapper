@@ -93,7 +93,7 @@ impl<T> From<Mmap> for MmapWrapper<T> {
 
 impl<T> From<MmapMut> for MmapMutWrapper<T> {
     fn from(m: MmapMut) -> MmapMutWrapper<T> {
-        MmapMutWrapper::new(m)
+        unsafe { MmapMutWrapper::new(m) }
     }
 }
 
@@ -123,19 +123,17 @@ impl<T> MmapWrapper<T> {
 }
 
 impl<T> MmapMutWrapper<T> {
-    pub fn new(m: MmapMut) -> MmapMutWrapper<T> {
-        // check that size of m matches
-        // size of inner type
+    /// # Safety
+    /// the backing mmap pointer must point to valid
+    /// memory for type T [T likely has to be repr(C)]
+    pub unsafe fn new(m: MmapMut) -> MmapMutWrapper<T> {
         MmapMutWrapper {
             raw: m,
             _inner: PhantomData,
         }
     }
 
-    /// # Safety
-    /// the backing mmap pointer must point to valid
-    /// memory for type T [T likely has to be repr(C)]
-    pub unsafe fn get_inner<'a>(&mut self) -> &'a mut T {
+    pub fn get_inner<'a>(&mut self) -> &'a mut T {
         unsafe { &mut *self.raw.as_mut_ptr().cast::<T>() }
     }
 }
