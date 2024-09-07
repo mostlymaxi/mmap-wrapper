@@ -147,13 +147,6 @@ impl<T> MmapWrapper<T> {
         Ok(mapped_region)
     }
 
-    pub fn new(path: &CStr) -> Result<MmapWrapper<T>, c_int> {
-        Ok(MmapWrapper {
-            raw: Self::map(path, false)?,
-            _inner: PhantomData,
-        })
-    }
-
     /// Retrieves a reference to the inner value of type `T` from the mapped memory.
     ///
     /// # Safety
@@ -164,7 +157,14 @@ impl<T> MmapWrapper<T> {
     /// # Panics
     ///
     /// This function is `unsafe` and does not perform any checks, so it may lead to undefined behavior if the safety guarantees are not met.
-    pub unsafe fn get_inner<'a>(&self) -> &'a T {
+    pub fn new(path: &CStr) -> Result<MmapWrapper<T>, c_int> {
+        Ok(MmapWrapper {
+            raw: Self::map(path, false)?,
+            _inner: PhantomData,
+        })
+    }
+
+    pub fn get_inner<'a>(&self) -> &'a T {
         unsafe { &*self.raw.cast::<T>() }
     }
 }
