@@ -133,6 +133,16 @@ impl<T> Clone for MmapMutWrapper<T> {
     }
 }
 
+impl<T> Clone for MmapWrapper<T> {
+    fn clone(&self) -> Self {
+        // this is horrifying
+        MmapWrapper {
+            raw: unsafe { transmute_copy(&self.raw) },
+            _inner: PhantomData,
+        }
+    }
+}
+
 impl<T> MmapMutWrapper<T> {
     /// # Safety
     /// the backing mmap pointer must point to valid
