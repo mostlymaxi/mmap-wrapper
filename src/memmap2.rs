@@ -1,3 +1,4 @@
+use core::mem::transmute_copy;
 use memmap2::{Mmap, MmapMut};
 use std::marker::PhantomData;
 
@@ -119,6 +120,26 @@ impl<T> MmapWrapper<T> {
 
     pub fn get_inner<'a>(&self) -> &'a T {
         unsafe { &*self.raw.as_ptr().cast::<T>() }
+    }
+}
+
+impl<T> Clone for MmapMutWrapper<T> {
+    fn clone(&self) -> Self {
+        // this is horrifying
+        MmapMutWrapper {
+            raw: unsafe { transmute_copy(&self.raw) },
+            _inner: PhantomData,
+        }
+    }
+}
+
+impl<T> Clone for MmapWrapper<T> {
+    fn clone(&self) -> Self {
+        // this is horrifying
+        MmapWrapper {
+            raw: unsafe { transmute_copy(&self.raw) },
+            _inner: PhantomData,
+        }
     }
 }
 

@@ -4,6 +4,7 @@ compile_error!("no_std feature only supports unix based operating systems");
 use core::ffi::{c_char, c_int, c_longlong, c_uint, c_void, CStr};
 use core::marker::PhantomData;
 use core::mem::size_of;
+use core::mem::transmute_copy;
 use core::ptr;
 
 const O_RDONLY: c_int = 0;
@@ -166,6 +167,26 @@ impl<T> MmapWrapper<T> {
 
     pub fn get_inner<'a>(&self) -> &'a T {
         unsafe { &*self.raw.cast::<T>() }
+    }
+}
+
+impl<T> Clone for MmapMutWrapper<T> {
+    fn clone(&self) -> Self {
+        // this is horrifying
+        MmapMutWrapper {
+            raw: unsafe { transmute_copy(&self.raw) },
+            _inner: PhantomData,
+        }
+    }
+}
+
+impl<T> Clone for MmapWrapper<T> {
+    fn clone(&self) -> Self {
+        // this is horrifying
+        MmapWrapper {
+            raw: unsafe { transmute_copy(&self.raw) },
+            _inner: PhantomData,
+        }
     }
 }
 
