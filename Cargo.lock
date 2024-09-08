@@ -19,7 +19,7 @@ dependencies = [
 
 [[package]]
 name = "mmap-wrapper"
-version = "1.0.1"
+version = "2.0.1"
 dependencies = [
  "memmap2",
 ]

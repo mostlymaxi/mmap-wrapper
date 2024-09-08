@@ -1,6 +1,6 @@
 use core::mem::transmute_copy;
 use memmap2::{Mmap, MmapMut};
-use std::marker::PhantomData;
+use std::{marker::PhantomData, sync::Arc};
 
 /// A wrapper wrapper for a memory-mapped file with data of type `T`.
 ///
@@ -40,8 +40,17 @@ use std::marker::PhantomData;
 /// };
 /// ```
 pub struct MmapWrapper<T> {
-    raw: Mmap,
+    raw: Arc<Mmap>,
     _inner: PhantomData<T>,
+}
+
+impl<T> Clone for MmapWrapper<T> {
+    fn clone(&self) -> Self {
+        MmapWrapper {
+            raw: self.raw.clone(),
+            _inner: PhantomData,
+        }
+    }
 }
 
 /// A mutable wrapper wrapper for a memory-mapped file with data of type `T`.
@@ -82,8 +91,17 @@ pub struct MmapWrapper<T> {
 /// };
 /// ```
 pub struct MmapMutWrapper<T> {
-    raw: MmapMut,
+    raw: Arc<MmapMut>,
     _inner: PhantomData<T>,
+}
+
+impl<T> Clone for MmapMutWrapper<T> {
+    fn clone(&self) -> Self {
+        MmapMutWrapper {
+            raw: self.raw.clone(),
+            _inner: PhantomData,
+        }
+    }
 }
 
 impl<T> From<Mmap> for MmapWrapper<T> {
@@ -106,40 +124,13 @@ impl<T> MmapWrapper<T> {
         // check that size of m matches
         // size of inner type
         MmapWrapper {
-            raw: m,
+            raw: Arc::new(m),
             _inner: PhantomData,
         }
-    }
-
-    pub fn make_mut(self) -> Result<MmapMutWrapper<T>, std::io::Error> {
-        Ok(MmapMutWrapper {
-            raw: self.raw.make_mut()?,
-            _inner: PhantomData,
-        })
     }
 
     pub fn get_inner<'a>(&self) -> &'a T {
         unsafe { &*self.raw.as_ptr().cast::<T>() }
-    }
-}
-
-impl<T> Clone for MmapMutWrapper<T> {
-    fn clone(&self) -> Self {
-        // this is horrifying
-        MmapMutWrapper {
-            raw: unsafe { transmute_copy(&self.raw) },
-            _inner: PhantomData,
-        }
-    }
-}
-
-impl<T> Clone for MmapWrapper<T> {
-    fn clone(&self) -> Self {
-        // this is horrifying
-        MmapWrapper {
-            raw: unsafe { transmute_copy(&self.raw) },
-            _inner: PhantomData,
-        }
     }
 }
 
@@ -149,12 +140,48 @@ impl<T> MmapMutWrapper<T> {
     /// memory for type T [T likely has to be repr(C)]
     pub unsafe fn new(m: MmapMut) -> MmapMutWrapper<T> {
         MmapMutWrapper {
-            raw: m,
+            raw: Arc::new(m),
             _inner: PhantomData,
         }
     }
 
     pub fn get_inner<'a>(&mut self) -> &'a mut T {
-        unsafe { &mut *self.raw.as_mut_ptr().cast::<T>() }
+        unsafe { &mut *self.raw.as_ptr().cast_mut().cast::<T>() }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    struct TestStruct {
+        _thing1: i32,
+    }
+
+    use std::{
+        fs::{self, File},
+        thread,
+    };
+
+    use crate::MmapMutWrapper;
+
+    #[test]
+    fn arc_thread_test() {
+        let f = File::create_new("arc_thread_test").unwrap();
+        f.set_len(size_of::<TestStruct>().try_into().unwrap())
+            .unwrap();
+        let m = unsafe { memmap2::MmapMut::map_mut(&f).unwrap() };
+        let m: MmapMutWrapper<TestStruct> = unsafe { MmapMutWrapper::new(m) };
+
+        let m_clone = m.clone();
+
+        let t = thread::spawn(move || {
+            let _ = m_clone;
+        });
+
+        let _ = t.join();
+
+        drop(m);
+
+        fs::remove_file("arc_thread_test").unwrap();
     }
 }
